@@ -7,7 +7,7 @@ import requests
 log = logging.getLogger("plextraktsync.trakt")
 
 TRAKT_API_URL = "https://api.trakt.tv"
-REQUEST_TIMEOUT = 30  # seconds
+REQUEST_TIMEOUT = 120  # seconds
 
 
 class TraktClient:
@@ -125,7 +125,9 @@ class TraktClient:
         resp.raise_for_status()
         return resp.json()
 
-    def sync_watched_episodes(self, episodes: list[dict]) -> dict:
+    def sync_watched_episodes(self, episodes: list[dict], batch_size: int = 50) -> dict:
+        """Mark episodes as watched on Trakt, batched to avoid gateway timeouts."""
+        # Group episodes by show
         shows: dict[str, dict] = {}
         for ep in episodes:
             key = f"{ep['show_title']}_{ep.get('show_year', '')}"
@@ -160,15 +162,27 @@ class TraktClient:
                 ep_entry["watched_at"] = ep["watched_at"]
             season["episodes"].append(ep_entry)
 
-        payload = {"shows": list(shows.values())}
-        resp = requests.post(
-            f"{TRAKT_API_URL}/sync/history",
-            json=payload,
-            headers=self._headers(),
-            timeout=REQUEST_TIMEOUT,
-        )
-        resp.raise_for_status()
-        return resp.json()
+        # Batch shows into chunks to avoid Trakt gateway timeouts
+        all_shows = list(shows.values())
+        total_added = 0
+
+        for i in range(0, len(all_shows), batch_size):
+            batch = all_shows[i:i + batch_size]
+            payload = {"shows": batch}
+            log.info("Syncing episode batch %d-%d of %d shows",
+                     i + 1, min(i + batch_size, len(all_shows)), len(all_shows))
+            resp = requests.post(
+                f"{TRAKT_API_URL}/sync/history",
+                json=payload,
+                headers=self._headers(),
+                timeout=REQUEST_TIMEOUT,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            total_added += data.get("added", {}).get("episodes", 0)
+
+        return {"added": {"episodes": total_added}}
+
 
     def get_profile(self) -> dict | None:
         try:

@@ -66,13 +66,10 @@
         {% if secrets.has_trakt_access_token %}
         <div class="flex items-center gap-1 mt-1">
             <span class="text-sm text-success">✓ Trakt is authorized</span>
-            <form method="POST" action="/trakt/disconnect" style="margin:0;display:inline;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-secondary btn-sm"
-                        onclick="return confirm('Disconnect Trakt? You will need to re-authorize.')">
-                    Disconnect
-                </button>
-            </form>
+            <button type="button" class="btn btn-secondary btn-sm"
+                    onclick="if(confirm('Disconnect Trakt? You will need to re-authorize.')){document.getElementById('disconnect-form').submit();}">
+                Disconnect
+            </button>
         </div>
         {% endif %}
     </div>
@@ -153,4 +150,9 @@ function toggleScheduleFields() {
 }
 toggleScheduleFields();
 </script>
+
+<!-- Disconnect form outside the main settings form to avoid nesting -->
+<form id="disconnect-form" method="POST" action="/trakt/disconnect" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
 {% endblock %}

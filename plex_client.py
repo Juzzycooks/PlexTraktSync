@@ -35,7 +35,7 @@ def validate_plex_url(url: str) -> str:
 def connect(plex_url: str, plex_token: str) -> PlexServer:
     """Return a connected PlexServer instance."""
     url = validate_plex_url(plex_url)
-    return PlexServer(url, plex_token, timeout=30)
+    return PlexServer(url, plex_token, timeout=120)
 
 
 def get_watched_movies(server: PlexServer, library_name: str = "Movies") -> list[dict]:

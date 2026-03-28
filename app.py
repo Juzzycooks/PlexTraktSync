@@ -232,7 +232,7 @@ def run_sync(triggered_by: str = "manual"):
         episodes = get_watched_episodes(server, tv_lib)
         result["episodes_found"] = len(episodes)
         if episodes:
-            sync_status["progress"] = f"Syncing {len(episodes)} episodes to Trakt..."
+            sync_status["progress"] = f"Syncing {len(episodes)} episodes to Trakt (batched)..."
             try:
                 resp = trakt.sync_watched_episodes(episodes)
                 result["episodes"] = resp.get("added", {}).get("episodes", len(episodes))
@@ -438,6 +438,7 @@ def trakt_auth_start():
 
 
 @app.route("/trakt/auth/poll", methods=["POST"])
+@csrf.exempt  # AJAX polling endpoint — rate limited instead
 @rate_limit("auth_poll")
 def trakt_auth_poll():
     trakt = _get_trakt_client()
@@ -491,6 +492,11 @@ def history():
 @app.route("/api/status")
 def api_status():
     return jsonify(sync_status)
+
+
+@app.route("/healthz")
+def healthz():
+    return "ok", 200
 
 
 @app.route("/api/history")
