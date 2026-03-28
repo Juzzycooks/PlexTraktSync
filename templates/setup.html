@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Setup – PlexTraktSync{% endblock %}
+{% block content %}
+<div class="setup-container">
+    <div class="page-title" style="justify-content:center;">Welcome to PlexTraktSync</div>
+    <p class="text-muted text-sm" style="text-align:center;margin-bottom:2rem;">
+        Let's connect your Plex server and Trakt.tv account in a few quick steps.
+    </p>
+
+    <div class="step-indicator">
+        <div class="step {% if step >= 2 %}done{% elif step == 1 %}active{% endif %}">
+            <div class="step-num">{% if step >= 2 %}✓{% else %}1{% endif %}</div>
+            <span class="step-label">Plex</span>
+        </div>
+        <div class="step-line {% if step >= 2 %}done{% endif %}"></div>
+        <div class="step {% if step >= 3 %}done{% elif step == 2 %}active{% endif %}">
+            <div class="step-num">{% if step >= 3 %}✓{% else %}2{% endif %}</div>
+            <span class="step-label">Trakt App</span>
+        </div>
+        <div class="step-line {% if step >= 3 %}done{% endif %}"></div>
+        <div class="step {% if step >= 4 %}done{% elif step == 3 %}active{% endif %}">
+            <div class="step-num">{% if step >= 4 %}✓{% else %}3{% endif %}</div>
+            <span class="step-label">Authorize</span>
+        </div>
+        <div class="step-line {% if step >= 4 %}done{% endif %}"></div>
+        <div class="step {% if step >= 4 %}active{% endif %}">
+            <div class="step-num">4</div>
+            <span class="step-label">Done</span>
+        </div>
+    </div>
+
+    {% if step == 1 %}
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon plex">🎬</div>
+            <h2>Connect your Plex Server</h2>
+        </div>
+        <form method="POST" action="/setup/plex">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="plex_url">Plex Server URL</label>
+            <input type="url" id="plex_url" name="plex_url" value="{{ secrets.get('plex_url', '') }}"
+                   placeholder="http://192.168.1.100:32400" required>
+            <label for="plex_token">Plex Token</label>
+            <input type="password" id="plex_token" name="plex_token"
+                   placeholder="Your X-Plex-Token" required>
+            <p class="form-hint">
+                Find your token: Plex Web → any media → Get Info → View XML → look for <code>X-Plex-Token</code> in the URL.
+            </p>
+
+            <div class="grid-2">
+                <div>
+                    <label for="plex_movie_library">Movie Library Name</label>
+                    <input type="text" id="plex_movie_library" name="plex_movie_library"
+                           value="{{ secrets.get('plex_movie_library', 'Movies') }}" maxlength="100">
+                </div>
+                <div>
+                    <label for="plex_tv_library">TV Library Name</label>
+                    <input type="text" id="plex_tv_library" name="plex_tv_library"
+                           value="{{ secrets.get('plex_tv_library', 'TV Shows') }}" maxlength="100">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-plex btn-lg" style="width:100%;margin-top:0.5rem;">
+                Save &amp; Continue →
+            </button>
+        </form>
+    </div>
+
+    {% elif step == 2 %}
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon trakt">📺</div>
+            <h2>Set up Trakt.tv App</h2>
+        </div>
+        <p class="text-sm text-muted mb-2">
+            Create an application at
+            <a href="https://trakt.tv/oauth/applications" target="_blank" rel="noopener noreferrer" style="color:var(--trakt);">trakt.tv/oauth/applications</a>.
+            Set the redirect URI to <code style="background:var(--bg);padding:0.15rem 0.4rem;border-radius:4px;">urn:ietf:wg:oauth:2.0:oob</code>.
+        </p>
+        <form method="POST" action="/setup/trakt">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="trakt_client_id">Client ID</label>
+            <input type="text" id="trakt_client_id" name="trakt_client_id"
+                   placeholder="Paste your Client ID" required maxlength="128">
+            <label for="trakt_client_secret">Client Secret</label>
+            <input type="password" id="trakt_client_secret" name="trakt_client_secret"
+                   placeholder="Paste your Client Secret" required maxlength="128">
+            <button type="submit" class="btn btn-trakt btn-lg" style="width:100%;margin-top:0.5rem;">
+                Save &amp; Continue →
+            </button>
+        </form>
+    </div>
+
+    {% elif step == 3 %}
+    <div class="card" style="text-align:center;">
+        <div class="card-header" style="justify-content:center;">
+            <div class="card-icon trakt">🔐</div>
+            <h2>Authorize with Trakt.tv</h2>
+        </div>
+        <p class="text-sm text-muted mb-2">
+            Click below to start the device authorization flow. You'll get a code to enter on Trakt's website.
+        </p>
+        <form method="POST" action="/trakt/auth/start">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="referrer" value="setup">
+            <button type="submit" class="btn btn-trakt btn-lg">Start Authorization</button>
+        </form>
+    </div>
+
+    {% elif step == 4 %}
+    <div class="card" style="text-align:center;">
+        <div style="font-size:3rem;margin-bottom:1rem;">🎉</div>
+        <h2 style="margin-bottom:0.75rem;">You're all set!</h2>
+        <p class="text-muted mb-2">Plex and Trakt are connected. You can now sync your watch history.</p>
+        <div class="flex items-center gap-1" style="justify-content:center;">
+            <a href="/" class="btn btn-primary btn-lg">Go to Dashboard</a>
+            <a href="/settings" class="btn btn-secondary">Configure Schedule</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

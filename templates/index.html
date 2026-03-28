@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – PlexTraktSync{% endblock %}
+{% block content %}
+<div class="page-title">Dashboard</div>
+
+<div class="grid-2 mb-2">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon plex">🎬</div>
+            <div>
+                <h2>Plex Server</h2>
+                {% if plex_configured %}
+                <span class="badge badge-success"><span class="badge-dot"></span> Connected</span>
+                {% else %}
+                <span class="badge badge-warning"><span class="badge-dot"></span> Not configured</span>
+                {% endif %}
+            </div>
+        </div>
+        {% if plex_configured %}
+        <p class="text-sm text-muted mb-1">{{ secrets.get('plex_url', '') }}</p>
+        <p class="text-xs text-dim">Libraries: {{ secrets.get('plex_movie_library', 'Movies') }}, {{ secrets.get('plex_tv_library', 'TV Shows') }}</p>
+        <div class="mt-2 flex items-center gap-1">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="testConnection('plex')">Test Connection</button>
+            <span id="plex-test-result" class="text-sm"></span>
+        </div>
+        {% else %}
+        <a href="/settings" class="btn btn-plex btn-sm mt-2">Configure Plex</a>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon trakt">📺</div>
+            <div>
+                <h2>Trakt.tv</h2>
+                {% if trakt_configured %}
+                <span class="badge badge-success"><span class="badge-dot"></span> Authenticated</span>
+                {% else %}
+                <span class="badge badge-error"><span class="badge-dot"></span> Not connected</span>
+                {% endif %}
+            </div>
+        </div>
+        {% if trakt_configured %}
+        <div class="mt-1 flex items-center gap-1">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="testConnection('trakt')">Test Connection</button>
+            <span id="trakt-test-result" class="text-sm"></span>
+        </div>
+        {% else %}
+        <p class="text-sm text-muted mb-1">Connect your Trakt account to start syncing.</p>
+        <a href="/settings" class="btn btn-trakt btn-sm mt-1">Connect Trakt</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Sync control -->
+<div class="card">
+    <div class="card-header justify-between" style="margin-bottom:0.75rem;">
+        <div class="flex items-center gap-1">
+            <div class="card-icon sync">🔄</div>
+            <h2>Sync</h2>
+        </div>
+        <form method="POST" action="/sync" style="margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary" id="sync-btn"
+                    {% if sync_status.running %}disabled{% endif %}>
+                {% if sync_status.running %}
+                <span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Syncing...
+                {% else %}
+                Sync Now
+                {% endif %}
+            </button>
+        </form>
+    </div>
+
+    {% if sync_status.running %}
+    <div class="sync-progress" id="sync-progress">
+        <div class="spinner"></div>
+        <span id="progress-text">{{ sync_status.progress or 'Syncing...' }}</span>
+    </div>
+    {% endif %}
+
+    {% if sync_status.last_result and not sync_status.running %}
+    <div class="stat-grid mt-2">
+        <div class="stat-box">
+            <div class="stat-value plex-color">{{ sync_status.last_result.movies_found|default(sync_status.last_result.movies, true) }}</div>
+            <div class="stat-label">Movies Found</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value accent-color">{{ sync_status.last_result.movies }}</div>
+            <div class="stat-label">Movies Synced</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value plex-color">{{ sync_status.last_result.episodes_found|default(sync_status.last_result.episodes, true) }}</div>
+            <div class="stat-label">Episodes Found</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value accent-color">{{ sync_status.last_result.episodes }}</div>
+            <div class="stat-label">Episodes Synced</div>
+        </div>
+    </div>
+    {% if sync_status.last_result.errors %}
+    <div class="mt-2" style="padding:0.75rem;background:var(--error-bg);border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,0.2);">
+        <p class="text-sm text-error">{{ sync_status.last_result.errors | join(', ') }}</p>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if sync_status.error and not sync_status.running %}
+    <div class="mt-2" style="padding:0.75rem;background:var(--error-bg);border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,0.2);">
+        <p class="text-sm text-error">{{ sync_status.error }}</p>
+    </div>
+    {% endif %}
+
+    <div class="mt-2 flex items-center gap-2 flex-wrap text-sm text-muted">
+        {% if sync_status.last_sync %}
+        <span>Last sync: {{ sync_status.last_sync[:19].replace('T', ' ') }}</span>
+        {% endif %}
+        {% if schedule_info and schedule_info != 'Disabled' %}
+        <span class="badge badge-info">⏰ {{ schedule_info }}</span>
+        {% endif %}
+        {% if next_run %}
+        <span>Next: {{ next_run }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Safe test connection — uses textContent to prevent XSS
+async function testConnection(type) {
+    const el = document.getElementById(type + '-test-result');
+    el.textContent = 'Testing...';
+    el.style.color = 'var(--text-muted)';
+    try {
+        const resp = await fetch('/test/' + encodeURIComponent(type), {
+            method: 'POST',
+            headers: { 'X-CSRFToken': window.CSRF_TOKEN }
+        });
+        const data = await resp.json();
+        if (data.status === 'ok') {
+            el.textContent = '✓ ' + (data.server || data.username || 'OK');
+            el.style.color = 'var(--success)';
+        } else {
+            el.textContent = '✗ ' + (data.message || 'Failed');
+            el.style.color = 'var(--error)';
+        }
+    } catch (e) {
+        el.textContent = '✗ Connection error';
+        el.style.color = 'var(--error)';
+    }
+}
+
+{% if sync_status.running %}
+(function pollStatus() {
+    const interval = setInterval(async () => {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            const progressEl = document.getElementById('progress-text');
+            if (progressEl && data.progress) progressEl.textContent = data.progress;
+            if (!data.running) {
+                clearInterval(interval);
+                location.reload();
+            }
+        } catch(e) {}
+    }, 2000);
+})();
+{% endif %}
+</script>
+{% endblock %}

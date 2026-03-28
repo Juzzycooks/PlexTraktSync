@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Sync History – PlexTraktSync{% endblock %}
+{% block content %}
+<div class="page-title">Sync History</div>
+
+{% if entries %}
+<div class="card" style="overflow-x:auto;">
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Trigger</th>
+                <th>Movies</th>
+                <th>Episodes</th>
+                <th>Duration</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in entries %}
+            <tr>
+                <td class="text-sm">{{ e.timestamp[:19].replace('T', ' ') }}</td>
+                <td>
+                    {% if e.triggered_by == 'scheduled' %}
+                    <span class="badge badge-info">⏰ Scheduled</span>
+                    {% else %}
+                    <span class="badge badge-warning">👤 Manual</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="text-muted text-xs">{{ e.movies_found|default('?') }} found →</span>
+                    {{ e.movies_synced|default(0) }} synced
+                </td>
+                <td>
+                    <span class="text-muted text-xs">{{ e.episodes_found|default('?') }} found →</span>
+                    {{ e.episodes_synced|default(0) }} synced
+                </td>
+                <td class="text-sm text-muted">{{ e.duration_seconds|default('?') }}s</td>
+                <td>
+                    {% if e.success %}
+                    <span class="badge badge-success"><span class="badge-dot"></span> OK</span>
+                    {% else %}
+                    <span class="badge badge-error" title="{{ e.errors|join(', ')|e }}"><span class="badge-dot"></span> Error</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:3rem;">
+    <p class="text-muted">No sync history yet. Run your first sync from the Dashboard.</p>
+    <a href="/" class="btn btn-primary mt-2">Go to Dashboard</a>
+</div>
+{% endif %}
+{% endblock %}

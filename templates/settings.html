@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Settings – PlexTraktSync{% endblock %}
+{% block content %}
+<div class="page-title">Settings</div>
+
+<form method="POST" action="/settings" id="settings-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Plex -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon plex">🎬</div>
+            <h2>Plex Server</h2>
+        </div>
+        <label for="plex_url">Server URL</label>
+        <input type="url" id="plex_url" name="plex_url" value="{{ secrets.get('plex_url', '') }}"
+               placeholder="http://192.168.1.100:32400">
+
+        <label for="plex_token">Token</label>
+        <input type="password" id="plex_token" name="plex_token"
+               value="" autocomplete="off" placeholder="{% if secrets.has_plex_token %}••••••••  (saved, enter new to change){% else %}X-Plex-Token{% endif %}">
+        <p class="form-hint">
+            Plex Web → any media → Get Info → View XML → <code>X-Plex-Token</code> in URL.
+            {% if secrets.has_plex_token %}Leave blank to keep current token.{% endif %}
+        </p>
+
+        <div class="grid-2">
+            <div>
+                <label for="plex_movie_library">Movie Library</label>
+                <input type="text" id="plex_movie_library" name="plex_movie_library"
+                       value="{{ secrets.get('plex_movie_library', 'Movies') }}" maxlength="100">
+            </div>
+            <div>
+                <label for="plex_tv_library">TV Library</label>
+                <input type="text" id="plex_tv_library" name="plex_tv_library"
+                       value="{{ secrets.get('plex_tv_library', 'TV Shows') }}" maxlength="100">
+            </div>
+        </div>
+    </div>
+
+    <!-- Trakt -->
+    <div class="card">
+        <div class="card-header justify-between">
+            <div class="flex items-center gap-1">
+                <div class="card-icon trakt">📺</div>
+                <h2>Trakt.tv</h2>
+            </div>
+            {% if secrets.has_trakt_access_token %}
+            <span class="badge badge-success"><span class="badge-dot"></span> Authenticated</span>
+            {% endif %}
+        </div>
+
+        <p class="form-hint" style="margin-top:0;margin-bottom:1rem;">
+            Create an app at <a href="https://trakt.tv/oauth/applications" target="_blank" rel="noopener noreferrer">trakt.tv/oauth/applications</a>.
+            Redirect URI: <code>urn:ietf:wg:oauth:2.0:oob</code>
+        </p>
+
+        <label for="trakt_client_id">Client ID</label>
+        <input type="text" id="trakt_client_id" name="trakt_client_id"
+               value="" autocomplete="off" placeholder="{% if secrets.has_trakt_client_id %}••••••••  (saved, enter new to change){% else %}Client ID{% endif %}" maxlength="128">
+
+        <label for="trakt_client_secret">Client Secret</label>
+        <input type="password" id="trakt_client_secret" name="trakt_client_secret"
+               value="" autocomplete="off" placeholder="{% if secrets.has_trakt_client_secret %}••••••••  (saved, enter new to change){% else %}Client Secret{% endif %}" maxlength="128">
+
+        {% if secrets.has_trakt_access_token %}
+        <div class="flex items-center gap-1 mt-1">
+            <span class="text-sm text-success">✓ Trakt is authorized</span>
+            <form method="POST" action="/trakt/disconnect" style="margin:0;display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-sm"
+                        onclick="return confirm('Disconnect Trakt? You will need to re-authorize.')">
+                    Disconnect
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Schedule -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon schedule">⏰</div>
+            <div>
+                <h2>Sync Schedule</h2>
+                <span class="text-xs text-muted">{{ schedule_info }}</span>
+            </div>
+        </div>
+
+        <label for="schedule_type">Schedule Type</label>
+        <select id="schedule_type" name="schedule_type" onchange="toggleScheduleFields()">
+            <option value="disabled" {% if secrets.get('schedule_type', 'interval') == 'disabled' or (secrets.get('schedule_type', 'interval') == 'interval' and not secrets.get('sync_interval_hours')) %}selected{% endif %}>
+                Disabled (manual only)
+            </option>
+            <option value="interval" {% if secrets.get('schedule_type') == 'interval' and secrets.get('sync_interval_hours') %}selected{% endif %}>
+                Every X hours
+            </option>
+            <option value="daily" {% if secrets.get('schedule_type') == 'daily' %}selected{% endif %}>
+                Daily at specific time
+            </option>
+            <option value="cron" {% if secrets.get('schedule_type') == 'cron' %}selected{% endif %}>
+                Custom cron expression
+            </option>
+        </select>
+
+        <div id="interval-fields" class="hidden">
+            <label for="sync_interval">Interval (hours)</label>
+            <input type="number" id="sync_interval" name="sync_interval" min="1" max="168"
+                   value="{{ secrets.get('sync_interval_hours', 6) }}">
+        </div>
+
+        <div id="daily-fields" class="hidden">
+            <label for="sync_daily_time">Time of day</label>
+            <input type="time" id="sync_daily_time" name="sync_daily_time"
+                   value="{{ secrets.get('sync_daily_time', '03:00') }}">
+        </div>
+
+        <div id="cron-fields" class="hidden">
+            <label for="sync_cron">Cron expression (min hour day month weekday)</label>
+            <input type="text" id="sync_cron" name="sync_cron"
+                   value="{{ secrets.get('sync_cron', '') }}" placeholder="0 */6 * * *" maxlength="50">
+            <p class="form-hint">
+                Examples: <code>0 */6 * * *</code> (every 6h), <code>0 3 * * *</code> (daily 3am),
+                <code>0 0 * * 0</code> (weekly Sunday midnight)
+            </p>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-success btn-lg" style="width:100%;">Save All Settings</button>
+</form>
+
+{% if secrets.has_trakt_client_id and not secrets.has_trakt_access_token %}
+<div class="card mt-2">
+    <div class="card-header">
+        <div class="card-icon trakt">🔐</div>
+        <h2>Authorize Trakt</h2>
+    </div>
+    <p class="text-sm text-muted mb-2">Save your Client ID/Secret above first, then authorize your Trakt account.</p>
+    <form method="POST" action="/trakt/auth/start">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="referrer" value="settings">
+        <button type="submit" class="btn btn-trakt">Start Authorization</button>
+    </form>
+</div>
+{% endif %}
+
+<script>
+function toggleScheduleFields() {
+    const type = document.getElementById('schedule_type').value;
+    document.getElementById('interval-fields').classList.toggle('hidden', type !== 'interval');
+    document.getElementById('daily-fields').classList.toggle('hidden', type !== 'daily');
+    document.getElementById('cron-fields').classList.toggle('hidden', type !== 'cron');
+}
+toggleScheduleFields();
+</script>
+{% endblock %}

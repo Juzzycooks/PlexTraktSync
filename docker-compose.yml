@@ -1,0 +1,16 @@
+services:
+  plextraktsync:
+    image: juzzycooks/plextraktsync:latest
+    # Or build locally:
+    # build: .
+    container_name: plextraktsync
+    restart: unless-stopped
+    ports:
+      - "5088:5000"
+    volumes:
+      - ./config:/config
+    environment:
+      # REQUIRED: Generate with: openssl rand -hex 32
+      - FLASK_SECRET_KEY=
+      # Optional: provide your own Fernet encryption key
+      # - ENCRYPTION_KEY=

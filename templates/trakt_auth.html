@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Authorize Trakt – PlexTraktSync{% endblock %}
+{% block content %}
+<div class="setup-container">
+    <div class="card" style="text-align:center;">
+        <div class="card-header" style="justify-content:center;">
+            <div class="card-icon trakt">🔐</div>
+            <h2>Authorize Trakt.tv</h2>
+        </div>
+
+        <p class="text-muted mt-2 mb-2">Go to the URL below and enter this code:</p>
+
+        <div class="auth-code" id="auth-code">{{ device.user_code }}</div>
+
+        <div class="mt-2 mb-2">
+            <a href="{{ device.verification_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-trakt btn-lg">
+                Open {{ device.verification_url }}
+            </a>
+        </div>
+
+        <div id="auth-status" class="mt-2">
+            <div class="flex items-center gap-1" style="justify-content:center;">
+                <div class="spinner" id="spinner"></div>
+                <span class="text-muted" id="status-text">Waiting for authorization...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function pollAuth() {
+    const statusText = document.getElementById('status-text');
+    const spinner = document.getElementById('spinner');
+    const maxAttempts = 60;
+    // Whitelist redirect destinations
+    const referrer = {{ referrer|tojson }};
+    const dest = referrer === 'setup' ? '/setup' : '/settings';
+
+    for (let i = 0; i < maxAttempts; i++) {
+        try {
+            const resp = await fetch('/trakt/auth/poll', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': window.CSRF_TOKEN }
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                statusText.textContent = '✓ Authorized! Redirecting...';
+                statusText.style.color = 'var(--success)';
+                spinner.style.display = 'none';
+                setTimeout(() => window.location.href = dest, 1200);
+                return;
+            } else if (data.status === 'error') {
+                statusText.textContent = '✗ ' + (data.message || 'Failed');
+                statusText.style.color = 'var(--error)';
+                spinner.style.display = 'none';
+                return;
+            }
+        } catch (e) { /* retry */ }
+        await new Promise(r => setTimeout(r, 5000));
+    }
+    statusText.textContent = 'Timed out. Please try again.';
+    statusText.style.color = 'var(--warning)';
+    spinner.style.display = 'none';
+}
+pollAuth();
+</script>
+{% endblock %}

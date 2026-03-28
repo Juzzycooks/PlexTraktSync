@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>PlexTraktSync</Name>
+  <Repository>juzzycooks/plextraktsync:latest</Repository>
+  <Registry>https://hub.docker.com/r/juzzycooks/plextraktsync</Registry>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Latest stable release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/juzzycooks/PlexTraktSync/issues</Support>
+  <Project>https://github.com/juzzycooks/PlexTraktSync</Project>
+  <Overview>
+    Sync your Plex watch history to Trakt.tv with a clean web UI.
+    Features: Movies and TV show sync, automatic scheduled syncing (interval, daily, or cron),
+    encrypted secret storage, setup wizard, sync history log, and connection testing.
+  </Overview>
+  <Category>MediaApp:Other</Category>
+  <WebUI>http://[IP]:[PORT:5088]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/juzzycooks/PlexTraktSync/main/icon.png</Icon>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <Description>
+    Plex to Trakt.tv watch history sync with web UI. Connects to your Plex server,
+    reads watched movies and TV episodes, and syncs them to your Trakt.tv profile.
+    Supports automatic scheduling and encrypted credential storage.
+  </Description>
+  <Config Name="Web UI Port" Target="5000" Default="5088" Mode="tcp" Description="Port for the web interface" Type="Port" Display="always" Required="true" Mask="false">5088</Config>
+  <Config Name="Config Storage" Target="/config" Default="/mnt/user/appdata/plextraktsync" Mode="rw" Description="Persistent storage for encrypted config and sync history" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/plextraktsync</Config>
+  <Config Name="Flask Secret Key" Target="FLASK_SECRET_KEY" Default="" Mode="" Description="Random string for session security. Generate with: openssl rand -hex 32" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Encryption Key" Target="ENCRYPTION_KEY" Default="" Mode="" Description="Optional: Fernet key for encrypting secrets. Auto-generated if empty." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+</Container>
