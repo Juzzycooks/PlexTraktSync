@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Stats – PlexTraktSync{% endblock %}
+{% block content %}
+<div class="page-title">📊 Sync Statistics</div>
+
+<!-- Lifetime stats -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon history">🏆</div>
+        <h2>Lifetime</h2>
+    </div>
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="stat-value accent-color">{{ stats.total_syncs }}</div>
+            <div class="stat-label">Total Syncs</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value text-success">{{ stats.successful_syncs }}</div>
+            <div class="stat-label">Successful</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value text-error">{{ stats.failed_syncs }}</div>
+            <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value plex-color">{{ stats.total_movies_synced }}</div>
+            <div class="stat-label">Movies Synced</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value plex-color">{{ stats.total_episodes_synced }}</div>
+            <div class="stat-label">Episodes Synced</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" style="color:var(--warning);">{{ stats.total_ratings_synced }}</div>
+            <div class="stat-label">Ratings Synced</div>
+        </div>
+    </div>
+    {% if stats.first_sync %}
+    <p class="text-xs text-dim mt-2">
+        First sync: {{ stats.first_sync[:10] }} · Last sync: {{ stats.last_sync[:10] if stats.last_sync else 'Never' }}
+    </p>
+    {% endif %}
+</div>
+
+<!-- Last 7 days -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon sync">📅</div>
+        <h2>Last 7 Days</h2>
+    </div>
+    <div class="stat-grid" style="margin-bottom:1.5rem;">
+        <div class="stat-box">
+            <div class="stat-value accent-color">{{ recent_syncs }}</div>
+            <div class="stat-label">Syncs</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value plex-color">{{ recent_movies }}</div>
+            <div class="stat-label">Movies</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value plex-color">{{ recent_episodes }}</div>
+            <div class="stat-label">Episodes</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" style="color:var(--warning);">{{ recent_ratings }}</div>
+            <div class="stat-label">Ratings</div>
+        </div>
+    </div>
+
+    <!-- Simple bar chart -->
+    <div id="chart" style="display:flex;align-items:flex-end;gap:4px;height:120px;padding:0 0.5rem;">
+        {% for day in chart_data %}
+        {% set total = day.movies + day.episodes + day.ratings %}
+        {% set max_val = chart_data|map(attribute='movies')|sum + chart_data|map(attribute='episodes')|sum %}
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div style="width:100%;display:flex;flex-direction:column;gap:1px;justify-content:flex-end;height:100px;">
+                {% if day.movies %}
+                <div style="background:var(--plex);border-radius:3px 3px 0 0;height:{{ [day.movies * 2, 100]|min }}px;min-height:4px;" title="{{ day.movies }} movies"></div>
+                {% endif %}
+                {% if day.episodes %}
+                <div style="background:var(--accent);border-radius:{% if not day.movies %}3px 3px {% endif %}0 0;height:{{ [day.episodes, 100]|min }}px;min-height:4px;" title="{{ day.episodes }} episodes"></div>
+                {% endif %}
+                {% if day.ratings %}
+                <div style="background:var(--warning);border-radius:0 0 3px 3px;height:{{ [day.ratings * 3, 100]|min }}px;min-height:4px;" title="{{ day.ratings }} ratings"></div>
+                {% endif %}
+                {% if not total %}
+                <div style="background:var(--surface2);border-radius:3px;height:4px;"></div>
+                {% endif %}
+            </div>
+            <span class="text-xs text-dim">{{ day.date[5:] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="flex items-center gap-2 mt-2" style="justify-content:center;">
+        <span class="text-xs flex items-center gap-1"><span style="width:10px;height:10px;background:var(--plex);border-radius:2px;display:inline-block;"></span> Movies</span>
+        <span class="text-xs flex items-center gap-1"><span style="width:10px;height:10px;background:var(--accent);border-radius:2px;display:inline-block;"></span> Episodes</span>
+        <span class="text-xs flex items-center gap-1"><span style="width:10px;height:10px;background:var(--warning);border-radius:2px;display:inline-block;"></span> Ratings</span>
+    </div>
+</div>
+{% endblock %}

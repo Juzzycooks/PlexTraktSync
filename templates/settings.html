@@ -74,6 +74,33 @@
         {% endif %}
     </div>
 
+    <!-- Features -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon" style="background:rgba(251,191,36,0.15);">⚡</div>
+            <h2>Features</h2>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+            <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;margin-bottom:0;">
+                <input type="checkbox" name="sync_ratings" {% if secrets.get('sync_ratings') %}checked{% endif %}
+                       style="width:18px;height:18px;accent-color:var(--accent);">
+                <div>
+                    <span style="font-size:0.9rem;color:var(--text);">Sync Ratings</span>
+                    <p class="text-xs text-dim" style="margin:0;">Sync Plex star ratings to Trakt on every sync</p>
+                </div>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;margin-bottom:0;">
+                <input type="checkbox" name="webhook_enabled" {% if secrets.get('webhook_enabled') %}checked{% endif %}
+                       style="width:18px;height:18px;accent-color:var(--accent);">
+                <div>
+                    <span style="font-size:0.9rem;color:var(--text);">Plex Webhooks (Real-time)</span>
+                    <p class="text-xs text-dim" style="margin:0;">Sync instantly when you finish watching. Set webhook URL in Plex to:
+                        <code>http://YOUR_IP:5088/webhook/plex</code></p>
+                </div>
+            </label>
+        </div>
+    </div>
+
     <!-- Schedule -->
     <div class="card">
         <div class="card-header">

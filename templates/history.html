@@ -12,6 +12,7 @@
                 <th>Trigger</th>
                 <th>Movies</th>
                 <th>Episodes</th>
+                <th>Ratings</th>
                 <th>Duration</th>
                 <th>Status</th>
             </tr>
@@ -21,19 +22,29 @@
             <tr>
                 <td class="text-sm">{{ e.timestamp[:19].replace('T', ' ') }}</td>
                 <td>
-                    {% if e.triggered_by == 'scheduled' %}
+                    {% if e.dry_run %}
+                    <span class="badge badge-warning">👁 Dry Run</span>
+                    {% elif e.triggered_by == 'scheduled' %}
                     <span class="badge badge-info">⏰ Scheduled</span>
+                    {% elif e.triggered_by == 'webhook' %}
+                    <span class="badge badge-success">⚡ Webhook</span>
                     {% else %}
                     <span class="badge badge-warning">👤 Manual</span>
                     {% endif %}
                 </td>
                 <td>
-                    <span class="text-muted text-xs">{{ e.movies_found|default('?') }} found →</span>
-                    {{ e.movies_synced|default(0) }} synced
+                    <span class="text-muted text-xs">{{ e.movies_found|default('?') }}→</span>
+                    {{ e.movies_synced|default(0) }}
                 </td>
                 <td>
-                    <span class="text-muted text-xs">{{ e.episodes_found|default('?') }} found →</span>
-                    {{ e.episodes_synced|default(0) }} synced
+                    <span class="text-muted text-xs">{{ e.episodes_found|default('?') }}→</span>
+                    {{ e.episodes_synced|default(0) }}
+                </td>
+                <td>
+                    {% if e.ratings_found %}
+                    <span class="text-muted text-xs">{{ e.ratings_found }}→</span>
+                    {{ e.ratings_synced|default(0) }}
+                    {% else %}—{% endif %}
                 </td>
                 <td class="text-sm text-muted">{{ e.duration_seconds|default('?') }}s</td>
                 <td>

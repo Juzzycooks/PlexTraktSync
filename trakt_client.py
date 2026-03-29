@@ -196,3 +196,79 @@ class TraktClient:
         except requests.RequestException as e:
             log.error("Profile fetch failed: %s", e)
         return None
+
+    # --- Ratings endpoints ---
+    def sync_ratings_movies(self, movies: list[dict]) -> dict:
+        """Sync movie ratings to Trakt. Plex uses 0-10, Trakt uses 1-10."""
+        payload = {"movies": []}
+        for m in movies:
+            rating = m.get("rating")
+            if rating is None:
+                continue
+            trakt_rating = max(1, min(10, round(float(rating))))
+            entry = {"title": m["title"], "year": m["year"], "rating": trakt_rating, "ids": {}}
+            if m.get("imdb"):
+                entry["ids"]["imdb"] = m["imdb"]
+            if m.get("tmdb"):
+                try:
+                    entry["ids"]["tmdb"] = int(m["tmdb"])
+                except (ValueError, TypeError):
+                    pass
+            payload["movies"].append(entry)
+        if not payload["movies"]:
+            return {"added": {"movies": 0}}
+        resp = requests.post(
+            f"{TRAKT_API_URL}/sync/ratings",
+            json=payload,
+            headers=self._headers(),
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def sync_ratings_shows(self, shows: list[dict]) -> dict:
+        """Sync show ratings to Trakt."""
+        payload = {"shows": []}
+        for s in shows:
+            rating = s.get("rating")
+            if rating is None:
+                continue
+            trakt_rating = max(1, min(10, round(float(rating))))
+            entry = {"title": s["title"], "year": s.get("year"), "rating": trakt_rating, "ids": {}}
+            if s.get("imdb"):
+                entry["ids"]["imdb"] = s["imdb"]
+            if s.get("tmdb"):
+                try:
+                    entry["ids"]["tmdb"] = int(s["tmdb"])
+                except (ValueError, TypeError):
+                    pass
+            if s.get("tvdb"):
+                try:
+                    entry["ids"]["tvdb"] = int(s["tvdb"])
+                except (ValueError, TypeError):
+                    pass
+            payload["shows"].append(entry)
+        if not payload["shows"]:
+            return {"added": {"shows": 0}}
+        resp = requests.post(
+            f"{TRAKT_API_URL}/sync/ratings",
+            json=payload,
+            headers=self._headers(),
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_ratings(self, media_type: str = "movies") -> list[dict]:
+        """Get user's ratings from Trakt. media_type: movies, shows, episodes."""
+        try:
+            resp = requests.get(
+                f"{TRAKT_API_URL}/sync/ratings/{media_type}",
+                headers=self._headers(),
+                timeout=REQUEST_TIMEOUT,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+        except requests.RequestException as e:
+            log.error("Failed to fetch Trakt ratings: %s", e)
+        return []

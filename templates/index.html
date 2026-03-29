@@ -18,16 +18,14 @@
         </div>
         {% if plex_configured %}
         <p class="text-sm text-muted mb-1">{{ secrets.get('plex_url', '') }}</p>
-        <p class="text-xs text-dim">Libraries: {{ secrets.get('plex_movie_library', 'Movies') }}, {{ secrets.get('plex_tv_library', 'TV Shows') }}</p>
         <div class="mt-2 flex items-center gap-1">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="testConnection('plex')">Test Connection</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="testConnection('plex')">Test</button>
             <span id="plex-test-result" class="text-sm"></span>
         </div>
         {% else %}
         <a href="/settings" class="btn btn-plex btn-sm mt-2">Configure Plex</a>
         {% endif %}
     </div>
-
     <div class="card">
         <div class="card-header">
             <div class="card-icon trakt">📺</div>
@@ -42,11 +40,10 @@
         </div>
         {% if trakt_configured %}
         <div class="mt-1 flex items-center gap-1">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="testConnection('trakt')">Test Connection</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="testConnection('trakt')">Test</button>
             <span id="trakt-test-result" class="text-sm"></span>
         </div>
         {% else %}
-        <p class="text-sm text-muted mb-1">Connect your Trakt account to start syncing.</p>
         <a href="/settings" class="btn btn-trakt btn-sm mt-1">Connect Trakt</a>
         {% endif %}
     </div>
@@ -59,17 +56,23 @@
             <div class="card-icon sync">🔄</div>
             <h2>Sync</h2>
         </div>
-        <form method="POST" action="/sync" style="margin:0;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-primary" id="sync-btn"
-                    {% if sync_status.running %}disabled{% endif %}>
-                {% if sync_status.running %}
-                <span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Syncing...
-                {% else %}
-                Sync Now
-                {% endif %}
-            </button>
-        </form>
+        <div class="flex items-center gap-1">
+            <form method="POST" action="/sync" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="dry_run" value="1">
+                <button type="submit" class="btn btn-secondary btn-sm" {% if sync_status.running %}disabled{% endif %}>
+                    👁 Dry Run
+                </button>
+            </form>
+            <form method="POST" action="/sync" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary" {% if sync_status.running %}disabled{% endif %}>
+                    {% if sync_status.running %}
+                    <span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Syncing...
+                    {% else %}Sync Now{% endif %}
+                </button>
+            </form>
+        </div>
     </div>
 
     {% if sync_status.running %}
@@ -80,9 +83,14 @@
     {% endif %}
 
     {% if sync_status.last_result and not sync_status.running %}
+    {% if sync_status.last_result.dry_run %}
+    <div class="mt-2" style="padding:0.75rem;background:var(--warning-bg);border-radius:var(--radius-sm);border:1px solid rgba(251,191,36,0.2);">
+        <p class="text-sm" style="color:var(--warning);">👁 Dry run — nothing was synced. Here's what would be sent:</p>
+    </div>
+    {% endif %}
     <div class="stat-grid mt-2">
         <div class="stat-box">
-            <div class="stat-value plex-color">{{ sync_status.last_result.movies_found|default(sync_status.last_result.movies, true) }}</div>
+            <div class="stat-value plex-color">{{ sync_status.last_result.movies_found|default(0) }}</div>
             <div class="stat-label">Movies Found</div>
         </div>
         <div class="stat-box">
@@ -90,25 +98,29 @@
             <div class="stat-label">Movies Synced</div>
         </div>
         <div class="stat-box">
-            <div class="stat-value plex-color">{{ sync_status.last_result.episodes_found|default(sync_status.last_result.episodes, true) }}</div>
+            <div class="stat-value plex-color">{{ sync_status.last_result.episodes_found|default(0) }}</div>
             <div class="stat-label">Episodes Found</div>
         </div>
         <div class="stat-box">
             <div class="stat-value accent-color">{{ sync_status.last_result.episodes }}</div>
             <div class="stat-label">Episodes Synced</div>
         </div>
+        {% if sync_status.last_result.ratings_found %}
+        <div class="stat-box">
+            <div class="stat-value" style="color:var(--warning);">{{ sync_status.last_result.ratings_found }}</div>
+            <div class="stat-label">Ratings Found</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" style="color:var(--warning);">{{ sync_status.last_result.ratings_synced }}</div>
+            <div class="stat-label">Ratings Synced</div>
+        </div>
+        {% endif %}
     </div>
     {% if sync_status.last_result.errors %}
-    <div class="mt-2" style="padding:0.75rem;background:var(--error-bg);border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,0.2);">
+    <div class="mt-2" style="padding:0.75rem;background:var(--error-bg);border-radius:var(--radius-sm);">
         <p class="text-sm text-error">{{ sync_status.last_result.errors | join(', ') }}</p>
     </div>
     {% endif %}
-    {% endif %}
-
-    {% if sync_status.error and not sync_status.running %}
-    <div class="mt-2" style="padding:0.75rem;background:var(--error-bg);border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,0.2);">
-        <p class="text-sm text-error">{{ sync_status.error }}</p>
-    </div>
     {% endif %}
 
     <div class="mt-2 flex items-center gap-2 flex-wrap text-sm text-muted">
@@ -118,22 +130,49 @@
         {% if schedule_info and schedule_info != 'Disabled' %}
         <span class="badge badge-info">⏰ {{ schedule_info }}</span>
         {% endif %}
-        {% if next_run %}
-        <span>Next: {{ next_run }}</span>
-        {% endif %}
+        {% if next_run %}<span>Next: {{ next_run }}</span>{% endif %}
     </div>
 </div>
 
+<!-- Lifetime stats -->
+{% if stats.total_syncs > 0 %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon history">📊</div>
+        <h2>Lifetime Stats</h2>
+    </div>
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="stat-value accent-color">{{ stats.total_syncs }}</div>
+            <div class="stat-label">Total Syncs</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value plex-color">{{ stats.total_movies_synced }}</div>
+            <div class="stat-label">Movies Synced</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value plex-color">{{ stats.total_episodes_synced }}</div>
+            <div class="stat-label">Episodes Synced</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" style="color:var(--warning);">{{ stats.total_ratings_synced }}</div>
+            <div class="stat-label">Ratings Synced</div>
+        </div>
+    </div>
+    <p class="text-xs text-dim mt-1">
+        <a href="/stats" style="color:var(--accent);text-decoration:none;">View detailed stats →</a>
+    </p>
+</div>
+{% endif %}
+
 <script>
-// Safe test connection — uses textContent to prevent XSS
 async function testConnection(type) {
     const el = document.getElementById(type + '-test-result');
     el.textContent = 'Testing...';
     el.style.color = 'var(--text-muted)';
     try {
         const resp = await fetch('/test/' + encodeURIComponent(type), {
-            method: 'POST',
-            headers: { 'X-CSRFToken': window.CSRF_TOKEN }
+            method: 'POST', headers: { 'X-CSRFToken': window.CSRF_TOKEN }
         });
         const data = await resp.json();
         if (data.status === 'ok') {
@@ -148,19 +187,15 @@ async function testConnection(type) {
         el.style.color = 'var(--error)';
     }
 }
-
 {% if sync_status.running %}
-(function pollStatus() {
-    const interval = setInterval(async () => {
+(function() {
+    const iv = setInterval(async () => {
         try {
-            const resp = await fetch('/api/status');
-            const data = await resp.json();
-            const progressEl = document.getElementById('progress-text');
-            if (progressEl && data.progress) progressEl.textContent = data.progress;
-            if (!data.running) {
-                clearInterval(interval);
-                location.reload();
-            }
+            const r = await fetch('/api/status');
+            const d = await r.json();
+            const p = document.getElementById('progress-text');
+            if (p && d.progress) p.textContent = d.progress;
+            if (!d.running) { clearInterval(iv); location.reload(); }
         } catch(e) {}
     }, 2000);
 })();

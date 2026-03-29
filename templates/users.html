@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Managed Users – PlexTraktSync{% endblock %}
+{% block content %}
+<div class="page-title">👥 Plex Managed Users</div>
+
+{% if users %}
+<div class="card">
+    <p class="text-sm text-muted mb-2">
+        These are the managed/home users on your Plex account. Per-user sync allows each user's
+        watch history to be synced independently. (Coming soon: link each user to their own Trakt account.)
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;">
+        {% for user in users %}
+        <div style="background:var(--bg);border-radius:var(--radius-sm);padding:1rem;text-align:center;">
+            <div style="width:48px;height:48px;border-radius:50%;background:var(--surface2);margin:0 auto 0.5rem;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">
+                👤
+            </div>
+            <p style="font-weight:600;font-size:0.95rem;">{{ user.title }}</p>
+            <p class="text-xs text-dim">{{ user.username }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:3rem;">
+    <p class="text-muted">No managed users found, or unable to connect to Plex account.</p>
+    <p class="text-xs text-dim mt-1">Make sure your Plex token belongs to the server owner account.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -16,6 +16,7 @@ SECRETS_FILE = CONFIG_DIR / "secrets.enc"
 _SAFE_KEYS = {
     "plex_url", "plex_movie_library", "plex_tv_library",
     "schedule_type", "sync_interval_hours", "sync_daily_time", "sync_cron",
+    "sync_ratings", "webhook_enabled",
 }
 
 # Keys whose presence can be exposed as a boolean, but not their value
